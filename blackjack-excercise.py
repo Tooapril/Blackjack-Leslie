@@ -73,11 +73,21 @@ def total_up(hand):
     else:
         return max(final_totals)
 
- 
-# Given the relevant inputs, the function below uses the neural net to make a prediction
-# and then based on that prediction, decides whether to hit or stay
-# 将玩家当前手牌总数和、起手是否有‘A’、庄家起手是否有‘A’传入神经网络模型，如果预测结果大于 0.52，则 hit，否则 stand
+
 def model_decision(model, player_sum, has_ace, dealer_card_num):
+    '''
+    Given the relevant inputs, the function below uses the neural net to make a prediction 
+    and then based on that prediction, decides whether to hit or stay
+    —— 将玩家各参数传入神经网络模型，如果预测结果大于 0.52, 则 hit, 否则 stand
+    input:
+    model -> 模型（一般指 NN 模型）
+    player_sum -> 玩家当前手牌和
+    has_ace -> 玩家发牌是否有 'A'
+    dealer_card_num -> 庄家发牌（明牌）值
+    return:
+    1 -> hit
+    0 -> stand
+    '''
     # 将需要进入神经网络模型的数据统一格式
     # [[18  0  0  6]]
     input_array = np.array([player_sum, 0, has_ace, dealer_card_num]).reshape(1, -1) # 二维数组变成一行 (1, n)
@@ -92,37 +102,55 @@ def model_decision(model, player_sum, has_ace, dealer_card_num):
     else:
         return 0
  
-  
-# Play a game of blackjack (after the cards are dealt)
-def play_game(type, live_total, dealer_hand, player_hands, blackjack, current_player_results, dealer_cards, hit_stay=0, model=None):
-    action = 0 # 标记玩家是否进行要牌操作
-    
+
+def play_game(type, live_total, dealer_hand, player_hands, blackjack, dealer_cards, player_results, action_results, hit_stay=0, model=None):
+    '''
+    Play a game of blackjack (after the cards are dealt)
+    input:
+    type -> 0: naive 版本
+            1: random 版本
+            2: NN 版本
+    live_total -> 玩家发牌手牌和
+    dealer_hand -> 庄家发牌（明牌 + 暗牌）
+    player_hands -> 玩家发牌（两张）
+    blackjack -> set(['A', 10])
+    dealer_cards -> 牌盒中的牌
+    player_results -> np.zeros((1, players))
+    action_results -> np.zeros((1, players))
+    hit_stay -> 何时采取要牌动作
+    model -> 模型（一般指 NN 模型）
+    return:
+    player_results -> 所有玩家“输”、“平”、“赢”结果
+    dealer_cards -> 牌盒中的牌
+    live_total -> 所有玩家牌值和
+    action_results -> 所有玩家是否采取"要牌"动作
+    '''
     # Dealer checks for 21
     if set(dealer_hand) == blackjack: # 庄家直接二十一点
         for player in range(players):
             if set(player_hands[player]) != blackjack: # 玩家此时不是二十一点，则结果为 -1 -- 规则❗️
-                current_player_results[0, player] = -1
+                player_results[0, player] = -1
             else:
-                current_player_results[0, player] = 0
+                player_results[0, player] = 0
     else: # 庄家不是二十一点，各玩家进行要牌、弃牌动作
         for player in range(players):
             # Players check for 21
             if set(player_hands[player]) == blackjack: # 玩家此时直接二十一点，则结果为 1
-                current_player_results[0, player] = 1
+                player_results[0, player] = 1
             else: # 玩家也不是二十一点
                 if type == 0: # Hit only when we know we will not bust -- 在玩家当前手牌点数不超过 11 时，才决定拿牌
                     while total_up(player_hands[player]) <= 11:
                         player_hands[player].append(dealer_cards.pop(0))
                         if total_up(player_hands[player]) > 21: # 拿完牌后再次确定是否爆牌，爆牌则结果为 -1
-                            current_player_results[0, player] = -1
+                            player_results[0, player] = -1
                             break
                 elif type == 1: # Hit randomly, check for busts -- 在玩家当前手牌不是二十一点时，以 hit_stay 是否大于 0.5 的方式决定拿牌
                     if (hit_stay >= 0.5) and (total_up(player_hands[player]) != 21):
                         player_hands[player].append(dealer_cards.pop(0))
-                        action = 1 #❓
+                        action_results[0, player] = 1
                         live_total.append(total_up(player_hands[player])) # 玩家要牌后，将点数和记录到 live_total
                         if total_up(player_hands[player]) > 21: # 拿完牌后再次确定是否爆牌，爆牌则结果为 -1
-                            current_player_results[0, player] = -1
+                            player_results[0, player] = -1
                 elif type == 2: # Neural net decides whether to hit or stay 
                     # -- 在玩家当前手牌不是二十一点时，通过玩家当前手牌、玩家和庄家起手是否有‘A’给神经网络计算后，大于 0.52，则继续拿牌
                     if 'A' in player_hands[player][0:2]: # 玩家起手有 ‘A’
@@ -137,10 +165,10 @@ def play_game(type, live_total, dealer_hand, player_hands, blackjack, current_pl
                     while (model_decision(model, total_up(player_hands[player]), ace_in_hand, 
                                           dealer_face_up_card) == 1) and (total_up(player_hands[player]) != 21):
                         player_hands[player].append(dealer_cards.pop(0))
-                        action = 1
+                        action_results[0, player] = 1
                         live_total.append(total_up(player_hands[player]))
                         if total_up(player_hands[player]) > 21:
-                            current_player_results[0, player] = -1
+                            player_results[0, player] = -1
                             break
                 
     
@@ -151,27 +179,45 @@ def play_game(type, live_total, dealer_hand, player_hands, blackjack, current_pl
     # Compare dealer hand to players hand but first check if dealer busted
     if total_up(dealer_hand) > 21: # 庄家爆牌
         for player in range(players): # 将结果不是 -1 的各玩家设置结果为 1
-            if current_player_results[0, player] != -1:
-                current_player_results[0, player] = 1
+            if player_results[0, player] != -1:
+                player_results[0, player] = 1
     else: # 庄家没爆牌
         for player in range(players): # 将玩家牌点数大于庄家牌点数的玩家结果置为 1
             if total_up(player_hands[player]) > total_up(dealer_hand):
                 if total_up(player_hands[player]) <= 21:
-                    current_player_results[0, player] = 1
+                    player_results[0, player] = 1
             elif total_up(player_hands[player]) == total_up(dealer_hand):
-                current_player_results[0, player] = 0
+                player_results[0, player] = 0
             else:
-                current_player_results[0, player] = -1
+                player_results[0, player] = -1
     
-    return current_player_results, dealer_cards, live_total, action
+    return player_results, dealer_cards, live_total, action_results
 
 
-def step(type, model=None):    
+def step(type, model=None):
+    '''
+    经过 stacks 局游戏后将数据记录在 model_df
+    input:
+    type -> 0: naive 版本
+            1: random 版本
+            2: NN 版本
+    model -> 已经训练好的模型（一般指 NN 模型）
+    return:
+    model_df -> dealer_card: 庄家发牌（明牌）
+                player_total_initial: 玩家一发牌手牌和
+                Y: 玩家一“输”、“平”、“赢”结果(-1, 0, 1)
+                lose: 玩家一“输”、“不输”结果(1, 0)
+                has_ace: 玩家一发牌是否有'A'
+                dealer_card_num: 庄家发牌（明牌）牌值
+                correct_action: 判断是否是正确的决定
+                hit?: 玩家一发牌后是否要牌 # ❓
+    '''
     dealer_card_feature = []
     player_card_feature = []
     player_live_total = []
     player_live_action = []
     player_results = []
+    action_results = []
 
     for stack in range(stacks):
         blackjack = set(['A', 10])
@@ -179,6 +225,7 @@ def step(type, model=None):
         while len(dealer_cards) > 20: # 牌盒里的牌不大于 20 张就没必要继续用这副牌进行游戏 -- 规则⭐️
             
             current_player_results = np.zeros((1, players))
+            current_action_results = np.zeros((1, players))
             
             dealer_hand = []
             player_hands = [[] for player in range(players)]
@@ -194,27 +241,27 @@ def step(type, model=None):
             dealer_hand.append(dealer_cards.pop(0)) # 再给庄家发第二张牌
             
             if type == 0:
-                current_player_results, dealer_cards, live_total, action = play_game(0, live_total, dealer_hand, player_hands, blackjack, 
-                                                                                     current_player_results, dealer_cards)
+                current_player_results, dealer_cards, live_total, current_action_results = play_game(
+                    0, live_total, dealer_hand, player_hands, blackjack, dealer_cards, current_player_results, current_action_results)
             elif type == 1:
                 # Record the player's live total after cards are dealt
                 live_total.append(total_up(player_hands[player]))
                 
                 # 前 25000 局，玩家在发牌后手牌不是 21 点就继续拿牌；
                 # 后 25000 局，玩家在发牌后手牌不是 21 点不继续拿牌。
-                if stack < 25000:
-                    hit_stay = 1
+                if stack < stacks/2:
+                    hit = 1
                 else:
-                    hit_stay = 0
+                    hit = 0
                 
-                current_player_results, dealer_cards, live_total, action = play_game(1, live_total, dealer_hand, player_hands, blackjack, 
-                                                                                     current_player_results, dealer_cards, hit_stay)
+                current_player_results, dealer_cards, live_total, current_action_results = play_game(
+                    1, live_total, dealer_hand, player_hands, blackjack, dealer_cards, current_player_results, current_action_results, hit_stay=hit)
             elif type == 2:
                 # Record the player's live total after cards are dealt
                 live_total.append(total_up(player_hands[player]))
                 
-                current_player_results, dealer_cards, live_total, action = play_game(2, live_total, dealer_hand, player_hands, blackjack, 
-                                                                                     current_player_results, dealer_cards, model=model)
+                current_player_results, dealer_cards, live_total, current_action_results = play_game(
+                    2, live_total, dealer_hand, player_hands, blackjack, dealer_cards, current_player_results, current_action_results, model=model)
             
             # Track features
             dealer_card_feature.append(dealer_hand[0]) # 将庄家的第一张牌存入新的 list
@@ -223,15 +270,15 @@ def step(type, model=None):
             
             if type == 1 or type == 2:
                 player_live_total.append(live_total) # 将 所有玩家发牌后的点数和 以及 采取要牌行动玩家的点数和 存入新的 list
-                player_live_action.append(action) # 将玩家是否采取要牌行动存入新的 list（只要有一个玩家要牌，action = 1）
+                action_results.append(list(current_action_results[0])) # 将玩家是否采取要牌行动存入新的 list（只要有一个玩家要牌，action = 1）
                     
     model_df = pd.DataFrame() # 构造数据集
     model_df['dealer_card'] = dealer_card_feature # 所有游戏庄家的第一张牌
-    # model_df['player_total'] = [total_up(i[0]) for i in player_card_feature] # 所有游戏第一个玩家的点数和（第一个玩家 -- 作为数据分析对象❗️）
     model_df['player_total_initial'] = [total_up(i[0][0:2]) for i in player_card_feature] # 所有游戏第一个玩家前两张牌的点数和（第一个玩家 -- 作为数据分析对象❗️）
     model_df['Y'] = [i[0] for i in player_results] # 所有游戏第一个玩家输赢结果（第一个玩家 -- 作为数据分析对象❗️）
     
     if type == 1 or type == 2:
+        player_live_action = [i[0] for i in action_results]
         model_df['hit?'] = player_live_action # 玩家在发牌后是否要牌
     
     has_ace = []
@@ -278,6 +325,9 @@ def step(type, model=None):
         model_df['correct_action'] = correct
         
     
+    # 将各模型数据保存至 data 文件夹下
+    model_df.to_csv('./Blackjack-Leslie/data/data' + str(type) + '.csv', sep=' ')
+    
     # 统计玩家一的所有输、赢、平的次数
     # -1.0    199610
     #  1.0     99685
@@ -290,8 +340,16 @@ def step(type, model=None):
     return model_df
 
 
-# Train a neural net to play blackjack
 def train(model_df):
+    '''
+    Train a neural net to play blackjack
+    input:
+    model_df -> 模型（一般指 random 模型）
+    return:
+    model -> NN 模型
+    pred_Y_train -> correct_action 的预测值
+    actuals -> correct_action 的实际值
+    '''
     # Set up variables for neural net
     feature_list = [i for i in model_df.columns if i not in ['dealer_card', 'Y', 'lose', 'correct_action']]
     # print(feature_list)
@@ -339,7 +397,7 @@ def comparison_chart(data, position):
 
     plt.legend()
     plt.tight_layout()
-    plt.savefig(fname= './img/' + position + '_card_probs_smart', dpi=150)
+    plt.savefig(fname= './Blackjack-Leslie/img/' + position + '_card_probs_smart', dpi=150)
 
 # 多个模型数据分析
 def comparison(model_df_naive, model_df_random, model_df_smart):
@@ -385,8 +443,22 @@ def comparison(model_df_naive, model_df_random, model_df_smart):
     print('Random: ' + str(round(model_df_naive[model_df_naive['Y']==1].shape[0]/model_df_naive.shape[0], 4)))
     print('Random: ' + str(round(model_df_smart[model_df_smart['Y']==1].shape[0]/model_df_smart.shape[0], 4)))
 
-# 单个模型数据分析
+
 def presentation(type, model_df):
+    '''
+    单个模型数据分析
+    input:
+    type -> 0: naive 版本
+            1: random 版本
+            2: NN 版本
+    model_df -> 待分析模型
+    output:
+    ./img/dealer_card_probs_random -> 【random】庄家发牌对玩家“不输”的影响
+    ./img/player_hand_probs_random -> 【random】玩家发牌和对玩家“不输”的影响
+    ./img/heat_map_random -> 【random】去掉玩家初始 21 点的情况后，玩家发牌和与庄家发牌对玩家“不输”的影响
+    ./img/hit_frequency_nn -> 【NN】
+    ./img/hit_frequency2_nn -> 【NN】
+    '''
     if type == 1:
         # 查看庄家不同手牌对玩家“不输”的影响
         data = 1 - (model_df.groupby(by='dealer_card').sum()['lose'] / 
@@ -398,7 +470,7 @@ def presentation(type, model_df):
         ax.set_ylabel("Probability of Tie or Win", fontsize=16)
 
         plt.tight_layout()
-        plt.savefig(fname='./img/dealer_card_probs', dpi=150)
+        plt.savefig(fname='./Blackjack-Leslie/img/dealer_card_probs', dpi=150)
 
 
         # 查看玩家前两张发牌点数和对玩家“不输”的影响
@@ -411,7 +483,7 @@ def presentation(type, model_df):
         ax.set_ylabel("Probability of Tie or Win", fontsize=16)
 
         plt.tight_layout()
-        plt.savefig(fname='./img/player_hand_probs', dpi=150)
+        plt.savefig(fname='./Blackjack-Leslie/img/player_hand_probs', dpi=150)
 
 
         # 查看玩家有‘A’对玩家“输”的影响
@@ -435,7 +507,7 @@ def presentation(type, model_df):
         ax.set_xlabel("Player's Hand Value", fontsize=16)
         ax.set_ylabel("Dealer's Card", fontsize=16)
 
-        plt.savefig(fname='./img/heat_map_random', dpi=150)
+        plt.savefig(fname='./Blackjack-Leslie/img/heat_map_random', dpi=150)
 
 
         # # 去掉玩家初始 21 点的情况后，玩家手牌与庄家第一张牌对玩家“不输”的影响
@@ -452,7 +524,7 @@ def presentation(type, model_df):
         # ax.set_xlabel("Player's Hand Value", fontsize=16)
         # ax.set_ylabel("Dealer's Card", fontsize=16)
 
-        # plt.savefig(fname='./img/heat_map_random2', dpi=150)
+        # plt.savefig(fname='./Blackjack-Leslie/img/heat_map_random2', dpi=150)
         
     elif type == 2:
         # Check out the probability of hitting for various player hand totals
@@ -461,16 +533,16 @@ def presentation(type, model_df):
         # [ 20  35  56  97  96 109 153 157 346 344 320 276 264 270 229 220 327 144]
         game_count_df = model_df.groupby(by=['player_total_initial']).count()['lose']
         game_count = np.array(game_count_df)
-        # print(game_count_df, game_count)
+        print(game_count)
         
         # 在要牌的所有数据中，以玩家前两张牌点数和分组，统计玩家输的局数，将数据转为 list()
         hit_count = list(model_df[model_df['hit?']==1].groupby(by=['player_total_initial']).count()['lose'])
-        # print(model_df[model_df['hit?']==1].groupby(by=['player_total_initial']).count()['lose'], hit_count)
+        print(hit_count)
         hit_count.extend([0 for i in range(len(game_count) - len(hit_count))])
         hit_rate_df = pd.DataFrame(np.array(hit_count) / np.array(game_count), 
                                    index=game_count_df.index, columns=['neural net hit frequency'])
         hit_rate_df.reset_index(inplace=True)
-        # print(hit_rate_df)
+        print(hit_rate_df)
         
         # 保守模型在玩家手牌小于 12 时，以 1.0 的概率要牌，将该数据加入 hit_rate_df
         naive_hit_rate = []
@@ -483,7 +555,7 @@ def presentation(type, model_df):
         
         # 输出 hit_rate_df 模型中 'neural net hit frequency', 'naive strategy hit frequency' 两列值
         data = hit_rate_df[['neural net hit frequency', 'naive strategy hit frequency']]
-        # print(data)
+        print(data)
         
         fig, ax = plt.subplots(figsize=(12, 6))
         ax.bar(x=hit_rate_df['player_total_initial']-0.2, 
@@ -496,7 +568,7 @@ def presentation(type, model_df):
         
         plt.legend()
         plt.tight_layout()
-        plt.savefig(fname='./img/hit_frequency', dpi=150)
+        plt.savefig(fname='./Blackjack-Leslie/img/hit_frequency', dpi=150)
         
 
         # Calculate and graph the neural net's hit frequency vs. dealer card for
@@ -510,9 +582,9 @@ def presentation(type, model_df):
                                      (model_df['player_total_initial']==16)] \
                                          .groupby(by=['dealer_card_num', 'hit?']).count()['lose']
         player_despair_df2 = player_despair_df.reset_index().copy()
-        print(player_despair_df, player_despair_df2)
+        print(player_despair_df2)
         
-        # 会有 ['hit?'] ！= 1 的情况 ❓
+        # 会有 ['hit?'] ！= 1 的情况 -- 数据量不充足❓
         hit_rate_despair = np.array(player_despair_df2[player_despair_df2['hit?']==1])[:, -1] / \
             np.array(player_despair_df2.groupby(by='dealer_card_num').sum())[:, -1]
         print(hit_rate_despair)
@@ -527,14 +599,21 @@ def presentation(type, model_df):
         plt.xticks(np.arange(2, 12, 1.0))
         
         plt.tight_layout()
-        plt.savefig(fname='./img/hit_frequency2', dpi=150)
+        plt.savefig(fname='./Blackjack-Leslie/img/hit_frequency2', dpi=150)
         
         # 
         print('Total hit frequency: ' + str(round(model_df[model_df['hit?']==1].shape[0] / np.sum(model_df.shape[0]), 4)))
         
 
-# 绘制训练模型曲线图
 def plot(pred_Y_train, actuals):
+    '''
+    Plot ROC Curve
+    input:
+    pred_Y_train -> 预测值
+    actuals -> 实际值
+    output:
+    ./img/roc_curve_blackjack -> 【NN】预测值与真实值的拟合程度
+    '''
     # Plot ROC Curve
     fpr, tpr, threshold = metrics.roc_curve(actuals, pred_Y_train)
     roc_auc = metrics.auc(fpr, tpr)
@@ -550,19 +629,19 @@ def plot(pred_Y_train, actuals):
     ax.set_ylabel("True Positive Rate", fontsize=16)
     plt.setp(ax.get_legend().get_texts(), fontsize=16)
     
-    plt.savefig(fname='./img/roc_curve_blackjack', dpi=150)
+    plt.savefig(fname='./Blackjack-Leslie/img/roc_curve_blackjack', dpi=150)
     plt.show()
     
 
 if __name__ == '__main__':
-    model_df_naive = step(0)
-    model_df_random = step(1)
-    presentation(1, model_df_random)
+    model_df_naive = step(0) # 生成 naive 模型各项数据
+    model_df_random = step(1) # 生成 random 模型各项数据
+    presentation(1, model_df_random) # 分析 random 模型数据
     
-    model_nn, pred_Y_train, actuals = train(model_df_random)
-    plot(pred_Y_train, actuals)
-    model_df_nn = step(2, model_nn)
-    comparison(model_df_naive, model_df_random, model_df_nn)
+    model_nn, pred_Y_train, actuals = train(model_df_random) # 用 random 模型数据进行训练
+    plot(pred_Y_train, actuals) # 绘制训练模型曲线图
+    model_df_nn = step(2, model_nn) # 生成 NN 模型各项数据
+    comparison(model_df_naive, model_df_random, model_df_nn) # 将 naive, random, NN 三个模型的数据对比分析
     print(model_df_naive, model_df_random, model_df_nn)
-    presentation(2, model_df_nn)
+    presentation(2, model_df_nn) # 分析 NN 模型数据
       
