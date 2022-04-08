@@ -8,18 +8,39 @@ import sklearn.metrics as metrics
 from keras.models import Sequential
 from keras.layers import Dense, LSTM, Flatten, Dropout
 
+
 stacks = 50000 # 牌局数目
 players = 1 # 玩家数目
 num_decks = 1 # 牌副数目
 
 card_types = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10]
 
-# This function lists out all permutations（排列） of ace values in the array sum_array
-# For example, if you have 2 aces, there are 4 permutations:
-#   [[1,1], [1,11], [11,1], [11,11]]
-# These permutations lead to 3 unique sums: [2, 12, 22]
-# of these 3, only 2 are <=21 so they are returned: [2, 12]
+
+def make_decks(num_decks, card_types):
+    '''
+    Make a deck -- 根据给定副数洗好牌
+    input:
+    num_decks -> 牌副数
+    card_types -> 单副牌单个花色对应的牌值
+    output:
+    new_deck -> 一副牌对应牌值
+    '''
+    new_deck = []
+    for i in range(num_decks):
+        for j in range(4): # 代表黑红梅方
+            new_deck.extend(card_types) #⭐️ extend() 函数用于在列表末尾一次性追加另一个序列中的多个值
+    random.shuffle(new_deck)
+    return new_deck
+
+
 def get_ace_values(temp_list):
+    '''
+    This function lists out all permutations of ace values in the array sum_array
+    For example, if you have 2 aces, there are 4 permutations:
+        [[1,1], [1,11], [11,1], [11,11]]
+    These permutations lead to 3 unique sums: [2, 12, 22]
+    of these 3, only 2 are <=21 so they are returned: [2, 12]
+    '''
     sum_array = np.zeros((2**len(temp_list), len(temp_list)))
     # This loop gets the permutations
     for i in range(len(temp_list)):
@@ -33,28 +54,26 @@ def get_ace_values(temp_list):
     return [int(s) for s in np.sum(sum_array, axis=1)] #⭐️ 将所有 'A' 能组成的点数以 int 类型返回（有重复和超过 21 点的值）
 
 
-# Convert num_aces, an int to a list of lists
-# For example if num_aces=2, the output should be [[1,11],[1,11]]
-# I require this format for the get_ace_values function
 def ace_values(num_aces):
+    '''
+    Convert num_aces, an int to a list of lists 
+    For example, if num_aces=2, the output should be [[1,11],[1,11]]
+    I require this format for the get_ace_values function
+    '''
     temp_list = []
     for i in range(num_aces):
         temp_list.append([1,11])
     return get_ace_values(temp_list)
 
 
-# Make a deck -- 根据给定副数洗好牌
-def make_decks(num_decks, card_types):
-    new_deck = []
-    for i in range(num_decks):
-        for j in range(4): # 代表黑红梅方
-            new_deck.extend(card_types) #⭐️ extend() 函数用于在列表末尾一次性追加另一个序列中的多个值
-    random.shuffle(new_deck)
-    return new_deck
-
-
-# Total up value of hand
 def total_up(hand):
+    '''
+    Total up value of hand
+    input:
+    <list> hand -> 当前手牌组合
+    output:
+    <int>  ->  计算当前手牌的合法值
+    '''
     aces = 0 # 记录 ‘A’ 的数目
     total = 0 # 记录除 ‘A’ 以外数字之和
     
@@ -210,7 +229,7 @@ def step(type, model=None):
                 has_ace: 玩家一发牌是否有'A'
                 dealer_card_num: 庄家发牌（明牌）牌值
                 correct_action: 判断是否是正确的决定
-                hit?: 玩家一发牌后是否要牌 # ❓
+                hit?: 玩家一发牌后是否要牌
     '''
     dealer_card_feature = []
     player_card_feature = []
@@ -247,8 +266,8 @@ def step(type, model=None):
                 # Record the player's live total after cards are dealt
                 live_total.append(total_up(player_hands[player]))
                 
-                # 前 25000 局，玩家在发牌后手牌不是 21 点就继续拿牌；
-                # 后 25000 局，玩家在发牌后手牌不是 21 点不继续拿牌。
+                # 前 stacks/2 局，玩家在发牌后手牌不是 21 点就继续拿牌；
+                # 后 stacks/2 局，玩家在发牌后手牌不是 21 点不继续拿牌。
                 if stack < stacks/2:
                     hit = 1
                 else:
@@ -324,7 +343,6 @@ def step(type, model=None):
                     correct.append(0)
         model_df['correct_action'] = correct
         
-    
     # 将各模型数据保存至 data 文件夹下
     model_df.to_csv('./Blackjack-Leslie/data/data' + str(type) + '.csv', sep=' ')
     
@@ -385,25 +403,45 @@ def train(model_df):
     
     return model, pred_Y_train, actuals
 
-# 绘制多模型数据分析图
+
 def comparison_chart(data, position):
+    '''
+    绘制多模型数据分析图
+    input:
+    data -> 数据集
+    position -> dealer / player
+    '''
     fig, ax = plt.subplots(figsize=(12,6))
-    ax.bar(x=data.index-0.28, height=data['naive'].values, color='blue', width=0.3, label='Naive')
-    ax.bar(x=data.index, height=data['random'].values, color='orange', width=0.3, label='Random')
-    ax.bar(x=data.index+0.28, height=data['smart'].values, color='red', width=0.3, label='Smart')
-    ax.set_xlabel(position.capitalize() + "'s Card", fontsize=16) # capitalize() -- 将字符串首字母大写
+    ax.bar(x=data.index-0.3, height=data['random'].values, color='blue', width=0.3, label='Random')
+    ax.bar(x=data.index, height=data['naive'].values, color='orange', width=0.3, label='Naive')
+    ax.bar(x=data.index+0.3, height=data['smart'].values, color='red', width=0.3, label='Smart')
     ax.set_ylabel('Probability of Tie or Win', fontsize=16)
-    plt.xticks(np.arange(2, 12, 1.0))
+    if position == 'dealer':
+        ax.set_xlabel("Dealer's Card", fontsize=16)
+        plt.xticks(np.arange(2, 12, 1.0))
+    elif position == 'player':
+        ax.set_xlabel("Player's Hand Value", fontsize=16)
+        plt.xticks(np.arange(4, 12, 1.0))
 
     plt.legend()
     plt.tight_layout()
     plt.savefig(fname= './Blackjack-Leslie/img/' + position + '_card_probs_smart', dpi=150)
 
-# 多个模型数据分析
+
 def comparison(model_df_naive, model_df_random, model_df_smart):
-    data = pd.DataFrame()
-    
-    # 模型对比：查看庄家第一张牌牌值对玩家“不输”的影响
+    '''
+    多个模型数据分析
+    input:
+    model_df_naive -> naive 模型
+    model_df_random -> random 模型
+    model_df_smart -> NN 模型
+    output:
+    ./img/dealer_card_probs_smart -> 模型对比：按庄家发牌（明牌）分组，分析玩家“不输”的概率
+    ./img/player_card_probs_smart -> 模型对比：按玩家发牌分组，分析玩家“不输”的概率
+    ./img/hit_frequency -> 模型对比：按玩家发牌分组，对比 naive 模型与 NN 模型玩家“要牌”的频率
+    ./img/hit_frequency2 -> 针对玩家发牌为 12, 13, 14, 15, 16 的数据，按庄家发牌分组，分析玩家“要牌”的频率
+    '''
+    # 模型对比：按庄家发牌（明牌）分组，分析玩家“不输”的概率
     # 保守模型
     data_naive = 1 - (model_df_naive.groupby(by='dealer_card_num').sum()['lose'] / 
                         model_df_naive.groupby(by='dealer_card_num').count()['lose'])
@@ -414,12 +452,13 @@ def comparison(model_df_naive, model_df_random, model_df_smart):
     data_smart = 1 - (model_df_smart.groupby(by='dealer_card_num').sum()['lose'] / 
                         model_df_smart.groupby(by='dealer_card_num').count()['lose'])
     
+    data = pd.DataFrame()
     data['naive'] = data_naive
     data['random'] = data_random
     data['smart'] = data_smart
     comparison_chart(data, 'dealer')
     
-    # 模型对比：查看玩家前两张初始牌值对玩家“不输”的影响
+    # 模型对比：按玩家发牌分组，分析玩家“不输”的概率
     # 保守模型
     data_naive = 1 - (model_df_naive.groupby(by='player_total_initial').sum()['lose'] / 
                         model_df_naive.groupby(by='player_total_initial').count()['lose'])
@@ -430,19 +469,153 @@ def comparison(model_df_naive, model_df_random, model_df_smart):
     data_smart = 1 - (model_df_smart.groupby(by='player_total_initial').sum()['lose'] / 
                         model_df_smart.groupby(by='player_total_initial').count()['lose'])
 
+    data = pd.DataFrame()
     data['naive'] = data_naive[:-1]
     data['random'] = data_random[:-1]
     data['smart'] = data_smart[:-1]
     comparison_chart(data, 'player')
     
+    # 各模型玩家赢的概率
+    # Random: 0.3515
+    # Random: 0.4165
+    # Random: 0.4194
     # round(x, [, n]) 返回浮点数 x 四舍五入值，小数点后保留 n 位
-    # Random: 0.3048
-    # Random: 0.4094
-    # Random: 0.3838
     print('Random: ' + str(round(model_df_random[model_df_random['Y']==1].shape[0]/model_df_random.shape[0], 4)))
     print('Random: ' + str(round(model_df_naive[model_df_naive['Y']==1].shape[0]/model_df_naive.shape[0], 4)))
     print('Random: ' + str(round(model_df_smart[model_df_smart['Y']==1].shape[0]/model_df_smart.shape[0], 4)))
+    
+    
+    # Check out the probability of hitting for various player hand totals
+    # -- 模型对比：按玩家发牌分组，对比 naive 模型与 NN 模型玩家“要牌”的频率
+    # 以玩家前两张牌点数和分组，统计玩家总局数
+    # [ 1364  3602  5267  7495  8782 11244 12565 14971 28538 29678 27366 25614 23379 22017 19519 18205 31118 14567]
+    game_count_df = model_df_smart.groupby(by=['player_total_initial']).count()['lose']
+    game_count = np.array(game_count_df)
+    # print(game_count)
+    
+    # 以玩家前两张牌点数和分组，统计玩家要牌的局数
+    # [1291, 3424, 4985, 7127, 8328, 10678, 11929, 14203, 27117, 28251, 23643, 16234, 9307]
+    hit_count = list(model_df_smart[model_df_smart['hit?']==1].groupby(by=['player_total_initial']).count()['lose'])
+    # print(hit_count)
+    hit_count.extend([0 for i in range(len(game_count) - len(hit_count))])
+    hit_rate_df = pd.DataFrame(np.array(hit_count) / np.array(game_count), 
+                                index=game_count_df.index, columns=['neural net hit frequency'])
+    hit_rate_df.reset_index(inplace=True)
+    # print(hit_rate_df)
+    
+    # 保守模型在玩家手牌小于 12 时，以 1.0 的概率要牌
+    naive_hit_rate = []
+    for i in range(4, 22):
+        if i < 12:
+            naive_hit_rate.append(1.0)
+        else:
+            naive_hit_rate.append(0.0)
+    hit_rate_df['naive strategy hit frequency'] = naive_hit_rate
+    
+    # 输出 hit_rate_df 模型中 'neural net hit frequency', 'naive strategy hit frequency' 两列值
+    #     neural net hit frequency  naive strategy hit frequency
+    # 0                   0.946481                           1.0
+    # 1                   0.950583                           1.0
+    # 2                   0.946459                           1.0
+    # 3                   0.950901                           1.0
+    # 4                   0.948303                           1.0
+    # 5                   0.949662                           1.0
+    # 6                   0.949383                           1.0
+    # 7                   0.948701                           1.0
+    # 8                   0.950207                           0.0
+    # 9                   0.951917                           0.0
+    # 10                  0.863955                           0.0
+    # 11                  0.633794                           0.0
+    # 12                  0.398092                           0.0
+    # 13                  0.000000                           0.0
+    # 14                  0.000000                           0.0
+    # 15                  0.000000                           0.0
+    # 16                  0.000000                           0.0
+    # 17                  0.000000                           0.0
+    data = hit_rate_df[['neural net hit frequency', 'naive strategy hit frequency']]
+    print(data)
+    
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.bar(x=hit_rate_df['player_total_initial']-0.2, 
+            height=data['neural net hit frequency'].values, color='blue', width=0.4, label='Neural Network')
+    ax.bar(x=hit_rate_df['player_total_initial']+0.2, 
+            height=data['naive strategy hit frequency'].values, color='orange', width=0.4, label='Naive')
+    ax.set_xlabel("Player's Hand Value", fontsize=16)
+    ax.set_ylabel("Frequency of Hitting", fontsize=16)
+    plt.xticks(np.arange(4, 21, 1.0))
+    
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(fname='./Blackjack-Leslie/img/hit_frequency', dpi=150)
 
+    # Calculate and graph the neural net's hit frequency vs. dealer card for
+    # player hands in [12, 13, 14, 15, 16]
+    #  -- 针对玩家发牌为 12, 13, 14, 15, 16 的数据，按庄家发牌分组，分析玩家“要牌”的频率
+    # 筛选出玩家点数和为 12, 13, 14, 15, 16 的数据，以庄家第一张手牌和是否要牌按次序分组，统计玩家总局数
+    #      dealer_card_num  hit?  lose
+    # 0                 2   0.0   6138
+    # 1                 2   1.0   4374
+    # 2                 3   0.0   4199
+    # 3                 3   1.0   6230
+    # 4                 4   0.0   3834
+    # 5                 4   1.0   6413
+    # 6                 5   0.0   3621
+    # 7                 5   1.0   6772
+    # 8                 6   0.0   1842
+    # 9                 6   1.0   8291
+    # 10                7   0.0   1842
+    # 11                7   1.0   8754
+    # 12                8   0.0   1750
+    # 13                8   1.0   8515
+    # 14                9   0.0    303
+    # 15                9   1.0  10113
+    # 16               10   0.0   3245
+    # 17               10   1.0  37921
+    # 18               11   0.0   3249
+    # 19               11   1.0   7169
+    player_despair_df = model_df_smart[(model_df_smart['player_total_initial']==12) |
+                                    (model_df_smart['player_total_initial']==13) |
+                                    (model_df_smart['player_total_initial']==14) |
+                                    (model_df_smart['player_total_initial']==15) |
+                                    (model_df_smart['player_total_initial']==16)] \
+                                        .groupby(by=['dealer_card_num', 'hit?']).count()['lose']
+    player_despair_df2 = player_despair_df.reset_index().copy()
+    print(player_despair_df2)
+    
+    # 会有 ['hit?'] ！= 1 的情况 -- 数据量不充足❓
+    # 在筛选的基础上，统计玩家要牌的频率
+    # [0.41609589 0.59737271 0.62584171 0.65159242 0.8182177  0.82616082 0.82951778 0.97091014 0.92117281 0.68813592]
+    hit_rate_despair = np.array(player_despair_df2[player_despair_df2['hit?']==1])[:, -1] / \
+        np.array(player_despair_df2.groupby(by='dealer_card_num').sum())[:, -1]
+    # print(hit_rate_despair)
+        
+    # 按庄家发牌分类，统计玩家在初始手牌为 12, 13, 14, 15, 16 下要牌的频率
+    # dealer_card_num   hit_rate          
+    # 2                0.416096
+    # 3                0.597373
+    # 4                0.625842
+    # 5                0.651592
+    # 6                0.818218
+    # 7                0.826161
+    # 8                0.829518
+    # 9                0.970910
+    # 10               0.921173
+    # 11               0.688136
+    data = pd.DataFrame(hit_rate_despair, index=player_despair_df2.groupby(by='dealer_card_num').sum().index, columns=['hit_rate'])
+    print(data)
+    
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.bar(x=data.index, height=data['hit_rate'].values)
+    ax.set_xlabel("Dealer's Card", fontsize=16)
+    ax.set_ylabel("Frequency of Hitting", fontsize=16)
+    plt.xticks(np.arange(2, 12, 1.0))
+    
+    plt.tight_layout()
+    plt.savefig(fname='./Blackjack-Leslie/img/hit_frequency2', dpi=150)
+    
+    # 模型中所有局数要牌的频率
+    print('Total hit frequency: ' + str(round(model_df_smart[model_df_smart['hit?']==1].shape[0] / np.sum(model_df_smart.shape[0]), 4)))
+    
 
 def presentation(type, model_df):
     '''
@@ -453,156 +626,56 @@ def presentation(type, model_df):
             2: NN 版本
     model_df -> 待分析模型
     output:
-    ./img/dealer_card_probs_random -> 【random】庄家发牌对玩家“不输”的影响
-    ./img/player_hand_probs_random -> 【random】玩家发牌和对玩家“不输”的影响
-    ./img/heat_map_random -> 【random】去掉玩家初始 21 点的情况后，玩家发牌和与庄家发牌对玩家“不输”的影响
-    ./img/hit_frequency_nn -> 【NN】
-    ./img/hit_frequency2_nn -> 【NN】
+    ./img/dealer_card_probs -> 按庄家发牌（明牌）分组，分析玩家“不输”的概率
+    ./img/player_hand_probs -> 按玩家发牌分组，分析玩家“不输”的概率
+    ./img/heat_map -> 去掉玩家初始 21 点，按玩家发牌与庄家发牌分组分析玩家“不输”的概率
     '''
-    if type == 1:
-        # 查看庄家不同手牌对玩家“不输”的影响
-        data = 1 - (model_df.groupby(by='dealer_card').sum()['lose'] / 
-                    model_df.groupby(by='dealer_card').count()['lose'])
+    # 按庄家发牌（明牌）分组，分析玩家“不输”的概率
+    data = 1 - (model_df.groupby(by='dealer_card').sum()['lose'] / 
+                model_df.groupby(by='dealer_card').count()['lose'])
 
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax = sns.barplot(x=data.index, y=data.values)
-        ax.set_xlabel("Dealer's Card", fontsize=16)
-        ax.set_ylabel("Probability of Tie or Win", fontsize=16)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax = sns.barplot(x=data.index, y=data.values)
+    ax.set_xlabel("Dealer's Card", fontsize=16)
+    ax.set_ylabel("Probability of Tie or Win", fontsize=16)
 
-        plt.tight_layout()
-        plt.savefig(fname='./Blackjack-Leslie/img/dealer_card_probs', dpi=150)
+    plt.tight_layout()
+    plt.savefig(fname='./Blackjack-Leslie/img/dealer_card_probs' + str(type), dpi=150)
 
+    # 按玩家发牌分组，分析玩家“不输”的概率
+    data = 1 - (model_df.groupby(by='player_total_initial').sum()['lose'] / 
+                model_df.groupby(by='player_total_initial').count()['lose'])
 
-        # 查看玩家前两张发牌点数和对玩家“不输”的影响
-        data = 1 - (model_df.groupby(by='player_total_initial').sum()['lose'] / 
-                    model_df.groupby(by='player_total_initial').count()['lose'])
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax = sns.barplot(x=data[:-1].index, y=data[:-1].values)
+    ax.set_xlabel("Player's Hand Value", fontsize=16)
+    ax.set_ylabel("Probability of Tie or Win", fontsize=16)
 
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax = sns.barplot(x=data[:-1].index, y=data[:-1].values)
-        ax.set_xlabel("Player's Hand Value", fontsize=16)
-        ax.set_ylabel("Probability of Tie or Win", fontsize=16)
+    plt.tight_layout()
+    plt.savefig(fname='./Blackjack-Leslie/img/player_hand_probs' + str(type), dpi=150)
 
-        plt.tight_layout()
-        plt.savefig(fname='./Blackjack-Leslie/img/player_hand_probs', dpi=150)
+    # 玩家有‘A’对玩家“输”的影响
+    # has_ace
+    # 0    0.683229
+    # 1    0.384232
+    # Name: lose, dtype: float64
+    # print(model_df.groupby(by='has_ace').sum()['lose'] / 
+    #     model_df.groupby(by='has_ace').count()['lose'])
 
+    # 去掉玩家初始 21 点，按玩家发牌与庄家发牌分组分析玩家“不输”的概率
+    pivot_data = model_df[model_df['player_total_initial'] != 21] # 去掉玩家一初始手牌点数为 21 的数据
+    losses_pivot = pd.pivot_table(pivot_data, values='lose', index=['dealer_card_num'], 
+                                columns=['player_total_initial'], aggfunc=np.sum)
+    games_pivot = pd.pivot_table(pivot_data, values='lose', index=['dealer_card_num'], 
+                                columns=['player_total_initial'], aggfunc='count')
+    heat_data = 1 - losses_pivot.sort_index(ascending=False) / games_pivot.sort_index(ascending=False)
 
-        # 查看玩家有‘A’对玩家“输”的影响
-        # has_ace
-        # 0    0.683229
-        # 1    0.384232
-        # Name: lose, dtype: float64
-        # print(model_df.groupby(by='has_ace').sum()['lose'] / 
-        #     model_df.groupby(by='has_ace').count()['lose'])
+    fig, ax = plt.subplots(figsize=(16, 8))
+    sns.heatmap(heat_data, square=False, cmap="PiYG")
+    ax.set_xlabel("Player's Hand Value", fontsize=16)
+    ax.set_ylabel("Dealer's Card", fontsize=16)
 
-        # 去掉玩家初始 21 点的情况后，初始手牌与庄家第一张牌对玩家“不输”的影响
-        pivot_data = model_df[model_df['player_total_initial'] != 21] # 去掉玩家一初始手牌点数为 21 的数据
-        losses_pivot = pd.pivot_table(pivot_data, values='lose', index=['dealer_card_num'], 
-                                    columns=['player_total_initial'], aggfunc=np.sum)
-        games_pivot = pd.pivot_table(pivot_data, values='lose', index=['dealer_card_num'], 
-                                    columns=['player_total_initial'], aggfunc='count')
-        heat_data = 1 - losses_pivot.sort_index(ascending=False) / games_pivot.sort_index(ascending=False)
-
-        fig, ax = plt.subplots(figsize=(16, 8))
-        sns.heatmap(heat_data, square=False, cmap="PiYG")
-        ax.set_xlabel("Player's Hand Value", fontsize=16)
-        ax.set_ylabel("Dealer's Card", fontsize=16)
-
-        plt.savefig(fname='./Blackjack-Leslie/img/heat_map_random', dpi=150)
-
-
-        # # 去掉玩家初始 21 点的情况后，玩家手牌与庄家第一张牌对玩家“不输”的影响
-        # model_tmp = model_df[model_df['player_total_initial'] != 21] # 去掉玩家一初始手牌点数为 21 的数据
-        # pivot_data2 = model_tmp[model_tmp['player_total'] < 21]
-        # losses_pivot2 = pd.pivot_table(pivot_data2, values='lose', index=['dealer_card_num'], 
-        #                             columns=['player_total'], aggfunc=np.sum)
-        # games_pivot2 = pd.pivot_table(pivot_data2, values='lose', index=['dealer_card_num'], 
-        #                             columns=['player_total'], aggfunc='count')
-        # heat_data2 = 1 - losses_pivot2.sort_index(ascending=False) / games_pivot2.sort_index(ascending=False)
-
-        # fig, ax = plt.subplots(figsize=(16, 8))
-        # sns.heatmap(heat_data2, square=False, cmap="PiYG")
-        # ax.set_xlabel("Player's Hand Value", fontsize=16)
-        # ax.set_ylabel("Dealer's Card", fontsize=16)
-
-        # plt.savefig(fname='./Blackjack-Leslie/img/heat_map_random2', dpi=150)
-        
-    elif type == 2:
-        # Check out the probability of hitting for various player hand totals
-        # -- 查看玩家前两张点数和对玩家要牌‘输’的影响
-        # 以玩家前两张牌点数和分组，统计玩家输的局数，将数据转为 np.array()
-        # [ 20  35  56  97  96 109 153 157 346 344 320 276 264 270 229 220 327 144]
-        game_count_df = model_df.groupby(by=['player_total_initial']).count()['lose']
-        game_count = np.array(game_count_df)
-        print(game_count)
-        
-        # 在要牌的所有数据中，以玩家前两张牌点数和分组，统计玩家输的局数，将数据转为 list()
-        hit_count = list(model_df[model_df['hit?']==1].groupby(by=['player_total_initial']).count()['lose'])
-        print(hit_count)
-        hit_count.extend([0 for i in range(len(game_count) - len(hit_count))])
-        hit_rate_df = pd.DataFrame(np.array(hit_count) / np.array(game_count), 
-                                   index=game_count_df.index, columns=['neural net hit frequency'])
-        hit_rate_df.reset_index(inplace=True)
-        print(hit_rate_df)
-        
-        # 保守模型在玩家手牌小于 12 时，以 1.0 的概率要牌，将该数据加入 hit_rate_df
-        naive_hit_rate = []
-        for i in range(4, 22):
-            if i < 12:
-                naive_hit_rate.append(1.0)
-            else:
-                naive_hit_rate.append(0.0)
-        hit_rate_df['naive strategy hit frequency'] = naive_hit_rate
-        
-        # 输出 hit_rate_df 模型中 'neural net hit frequency', 'naive strategy hit frequency' 两列值
-        data = hit_rate_df[['neural net hit frequency', 'naive strategy hit frequency']]
-        print(data)
-        
-        fig, ax = plt.subplots(figsize=(12, 6))
-        ax.bar(x=hit_rate_df['player_total_initial']-0.2, 
-               height=data['neural net hit frequency'].values, color='blue', width=0.4, label='Neural Network')
-        ax.bar(x=hit_rate_df['player_total_initial']+0.2, 
-               height=data['naive strategy hit frequency'].values, color='orange', width=0.4, label='Naive')
-        ax.set_xlabel("Player's Hand Value", fontsize=16)
-        ax.set_ylabel("Frequency of Hitting", fontsize=16)
-        plt.xticks(np.arange(4, 21, 1.0))
-        
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(fname='./Blackjack-Leslie/img/hit_frequency', dpi=150)
-        
-
-        # Calculate and graph the neural net's hit frequency vs. dealer card for
-        # player hands in [12, 13, 14, 15, 16]
-        #  -- 针对玩家点数和为 12, 13, 14, 15, 16 的数据，查看庄家第一张手牌对玩家要牌‘输’的影响
-        # 筛选出玩家点数和为 12, 13, 14, 15, 16 的数据，以庄家第一张手牌和是否要牌按次序分组，统计这些局玩家输掉的值
-        player_despair_df = model_df[(model_df['player_total_initial']==12) |
-                                     (model_df['player_total_initial']==13) |
-                                     (model_df['player_total_initial']==14) |
-                                     (model_df['player_total_initial']==15) |
-                                     (model_df['player_total_initial']==16)] \
-                                         .groupby(by=['dealer_card_num', 'hit?']).count()['lose']
-        player_despair_df2 = player_despair_df.reset_index().copy()
-        print(player_despair_df2)
-        
-        # 会有 ['hit?'] ！= 1 的情况 -- 数据量不充足❓
-        hit_rate_despair = np.array(player_despair_df2[player_despair_df2['hit?']==1])[:, -1] / \
-            np.array(player_despair_df2.groupby(by='dealer_card_num').sum())[:, -1]
-        print(hit_rate_despair)
-            
-        data = pd.DataFrame(hit_rate_despair, index=player_despair_df2.groupby(by='dealer_card_num').sum().index, columns=['hit_rate'])
-        print(data)
-        
-        fig, ax = plt.subplots(figsize=(12, 6))
-        ax.bar(x=data.index, height=data['hit_rate'].values)
-        ax.set_xlabel("Dealer's Card", fontsize=16)
-        ax.set_ylabel("Frequency of Hitting", fontsize=16)
-        plt.xticks(np.arange(2, 12, 1.0))
-        
-        plt.tight_layout()
-        plt.savefig(fname='./Blackjack-Leslie/img/hit_frequency2', dpi=150)
-        
-        # 
-        print('Total hit frequency: ' + str(round(model_df[model_df['hit?']==1].shape[0] / np.sum(model_df.shape[0]), 4)))
+    plt.savefig(fname='./Blackjack-Leslie/img/heat_map' + str(type), dpi=150)
         
 
 def plot(pred_Y_train, actuals):
@@ -641,7 +714,7 @@ if __name__ == '__main__':
     model_nn, pred_Y_train, actuals = train(model_df_random) # 用 random 模型数据进行训练
     plot(pred_Y_train, actuals) # 绘制训练模型曲线图
     model_df_nn = step(2, model_nn) # 生成 NN 模型各项数据
+    presentation(2, model_df_nn) # 分析 NN 模型数据
     comparison(model_df_naive, model_df_random, model_df_nn) # 将 naive, random, NN 三个模型的数据对比分析
     print(model_df_naive, model_df_random, model_df_nn)
-    presentation(2, model_df_nn) # 分析 NN 模型数据
-      
+    
