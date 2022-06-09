@@ -22,9 +22,9 @@ EPS_END = 0.05
 EPS_DECAY = 20000
 WEIGHT_DECAY = 0.0001
 
-NUM_LAYERS = 11
+NUM_LAYERS = 7
 # k = np.rint(NUM_LAYERS / 2 + 0.5)
-k = 13
+k = 7
 num_episodes = 800000
 # start_period = 50000
 start_period = 0
@@ -44,6 +44,7 @@ layers_size = {-1: n_in}
 factor = (n_out/k/n_in)**(1/(NUM_LAYERS - 1))
 for layer in range(NUM_LAYERS):
 	layers_size[layer] = int(np.rint(k*n_in * factor**(layer)))
+# {-1: 5, 0: 65, 1: 50, 2: 39, 3: 30, 4: 23, 5: 18, 6: 14, 7: 11, 8: 8, 9: 6, 10: 5}
 print(layers_size)
 
 modules = []
@@ -211,4 +212,5 @@ plt.title("Average Reward Over Time for a DQN with " + str(NUM_LAYERS) + " Layer
 plt.ylabel("return per episode")
 plt.xlabel("number of episodes")
 plt.plot(iterations, avg_reward_graph)
-plt.show()
+# plt.show()
+plt.savefig(fname='./img/average_reward' + '_' + str(NUM_LAYERS) + '_' + str(k), dpi=150)

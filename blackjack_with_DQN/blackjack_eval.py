@@ -22,12 +22,14 @@ state_machine = BlackjackSM()
 n_in = state_machine.len_state
 n_out = state_machine.len_actions
 
+# build network
 layers_size = {-1: n_in}
 factor = (n_out/k/n_in)**(1/(NUM_LAYERS - 1))
 for layer in range(NUM_LAYERS):
 	layers_size[layer] = int(np.rint(k*n_in * factor**(layer)))
 print(layers_size)
 
+# 构建网络模型
 modules = []
 for i in layers_size.keys():
 	if i == -1: continue
@@ -92,5 +94,21 @@ with open("policies/blackjack_DQN_pol_" + str(NUM_LAYERS) + "-" + str(k) + ".csv
 	for self_state, actions in policy.items():
 		file.write(str(self_state[0]) + " " + str(self_state[1]) + " " + str(self_state[3]) + ",")
 		for action in actions[:-1]:
-			file.write(str(act_lookup[action]) + ",")
-		file.write(str(act_lookup[actions[-1]]) + "\n")
+			file.write(str(act_lookup[int(action)]) + ",")
+		file.write(str(act_lookup[int(actions[-1])]) + "\n")
+  
+avg_reward = 0
+for episode in range(50000):
+    state_machine.new_hand()
+    
+    while True:
+        scores = model(Variable(FloatTensor(np.array([state_machine.state()])), volatile=True)).data
+        mask = ByteTensor(1 - state_machine.mask())
+        best_action = (scores.masked_fill_(mask, -16)).max(-1)[1][0]
+        state_machine.do(int(best_action))
+        
+        if state_machine.terminal:
+            break
+    
+    avg_reward += state_machine.reward() / 50000
+print(avg_reward) 

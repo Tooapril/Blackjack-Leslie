@@ -3,7 +3,7 @@ from collections import defaultdict
 import pdb
 
 num_episodes = 5000000
-full_sim = False
+full_sim = True
 network_params = [(11,13)]
 # network_params = [(3,1), (3,3), (3,5), (3,7), (3,9), (3,11), (3,13), (3,15),
 # 				  (5,7), (7,7), (9,7), (11,7), (13,7),
