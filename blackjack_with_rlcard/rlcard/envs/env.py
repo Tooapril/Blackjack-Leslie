@@ -137,7 +137,7 @@ class Env(object):
         state, player_id = self.reset() # 对应玩家的状态
 
         # Loop to play the game
-        trajectories[player_id].append(state)
+        trajectories[player_id].append(state) # 将对应玩家初始状态存入 trajectories
         while not self.is_over(): # 游戏没结束则继续
             # Agent plays（根据当前状态传入 Q 网络选择合法动作）
             if not is_training: # 利用已有 Q 值采取行动
@@ -148,7 +148,7 @@ class Env(object):
             # Environment steps（采取 action 后更新环境 state）
             next_state, next_player_id = self.step(action, self.agents[player_id].use_raw)
             # Save action (对应玩家位置存储采取 action 前的 state)
-            trajectories[player_id].append(action)
+            trajectories[player_id].append(action) # 将玩家采取的动作存入 trajectories
 
             # Set the state and player
             state = next_state

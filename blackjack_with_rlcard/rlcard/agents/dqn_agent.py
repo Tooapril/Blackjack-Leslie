@@ -127,7 +127,7 @@ class DQNAgent(object):
         self.feed_memory(state['obs'], action, reward, next_state['obs'], list(state['legal_actions'].keys()), done)
         self.total_t += 1
         tmp = self.total_t - self.replay_memory_init_size
-        if tmp>=0 and tmp%self.train_every == 0:
+        if tmp>=0 and tmp%self.train_every == 0: # 自 replay_memory_init_size 开始，每存入 train_every 次，就训练一次
             self.train()
 
     def step(self, state):
@@ -398,9 +398,9 @@ class Memory(object):
             legal_actions (list): the legal actions of the next state
             done (boolean): whether the episode is finished
         '''
-        if len(self.memory) == self.memory_size:
+        if len(self.memory) == self.memory_size: # 如果 memory 的内容长度等于 memory_size ，则弹出 memory 中第一个 transition
             self.memory.pop(0)
-        transition = Transition(state, action, reward, next_state, legal_actions, done)
+        transition = Transition(state, action, reward, next_state, legal_actions, done) # 将 transition 按照指定格式存入 memory
         self.memory.append(transition)
 
     def sample(self):

@@ -49,7 +49,7 @@ def train(args):
             # Generate data from the environment （玩完一局游戏后，将所有玩家最新状态和游戏结果存储起来）
             trajectories, payoffs = env.run(is_training=True)
 
-            # Reorganaize the data to be state, action, reward, next_state, done
+            # Reorganaize the data to be state, action, reward, next_state, done （在 trajectories 的基础上，将每一步行动的奖励值和是否结束也标记出来）
             trajectories = reorganize(trajectories, payoffs)
 
             # Feed transitions into agent memory, and train the agent
