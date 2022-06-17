@@ -22,7 +22,7 @@ if not os.path.isfile(os.path.join(ROOT_PATH, 'games/doudizhu/jsondata/action_sp
 action_space_path = os.path.join(ROOT_PATH, 'games/doudizhu/jsondata/action_space.txt')
 with open(action_space_path, 'r') as f:
     ID_2_ACTION = f.readline().strip().split()
-    ACTION_2_ID = {}
+    ACTION_2_ID = {} # 给合法动作进行排序编码
     for i, action in enumerate(ID_2_ACTION):
         ACTION_2_ID[action] = i
 

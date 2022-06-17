@@ -14,8 +14,8 @@ class DoudizhuEnv(Env):
         from rlcard.games.doudizhu import Game
         self._cards2str = cards2str
         self._cards2str_with_suit = cards2str_with_suit
-        self._ACTION_2_ID = ACTION_2_ID
-        self._ID_2_ACTION = ID_2_ACTION
+        self._ACTION_2_ID = ACTION_2_ID # 所有合法动作的顺序编码（key: action, value: code）
+        self._ID_2_ACTION = ID_2_ACTION # 按顺序编码所有合法动作（key: code, value: action）
         
         self.name = 'doudizhu'
         self.game = Game()
