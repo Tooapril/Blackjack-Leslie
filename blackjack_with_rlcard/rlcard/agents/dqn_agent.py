@@ -195,27 +195,27 @@ class DQNAgent(object):
         state_batch, action_batch, reward_batch, next_state_batch, legal_actions_batch, done_batch = self.memory.sample()
 
         # Calculate best next actions using Q-network (Double DQN)
-        q_values_next = self.q_estimator.predict_nograd(next_state_batch)
+        q_values_next = self.q_estimator.predict_nograd(next_state_batch) # 将下一状态传入 Q 网络计算 best next actions
         legal_actions = []
         for b in range(self.batch_size):
             legal_actions.extend([i + b * self.num_actions for i in legal_actions_batch[b]])
         masked_q_values = -np.inf * np.ones(self.num_actions * self.batch_size, dtype=float)
         masked_q_values[legal_actions] = q_values_next.flatten()[legal_actions]
         masked_q_values = masked_q_values.reshape((self.batch_size, self.num_actions))
-        best_actions = np.argmax(masked_q_values, axis=1)
+        best_actions = np.argmax(masked_q_values, axis=1) # 根据 Q 网络计算的值选择出整个 batch 中每一次的 best action
 
         # Evaluate best next actions using Target-network (Double DQN)
-        q_values_next_target = self.target_estimator.predict_nograd(next_state_batch)
+        q_values_next_target = self.target_estimator.predict_nograd(next_state_batch) # 将下一状态传入 Q 网络计算 best next actions
         target_batch = reward_batch + np.invert(done_batch).astype(np.float32) * \
-            self.discount_factor * q_values_next_target[np.arange(self.batch_size), best_actions]
+            self.discount_factor * q_values_next_target[np.arange(self.batch_size), best_actions] # 以 q_estimator 算出来的 best_action 在 target_estimator 中选择对应值来计算 target_batch
 
         # Perform gradient descent update
         state_batch = np.array(state_batch)
 
-        loss = self.q_estimator.update(state_batch, action_batch, target_batch)
+        loss = self.q_estimator.update(state_batch, action_batch, target_batch) # 使用 q_estimator 网络来计算 loss 值
         print('\rINFO - Step {}, rl-loss: {}'.format(self.total_t, loss), end='')
 
-        # Update the target estimator
+        # Update the target estimator （每训练 update_target_estimator_every 次，则将 q_estimator 网络更新至 target_estimator 网络）
         if self.train_t % self.update_target_estimator_every == 0:
             self.target_estimator = deepcopy(self.q_estimator)
             print("\nINFO - Copied model parameters to target network.")
@@ -321,13 +321,13 @@ class Estimator(object):
         y = torch.from_numpy(y).float().to(self.device)
 
         # (batch, state_shape) -> (batch, num_actions)
-        q_as = self.qnet(s)
+        q_as = self.qnet(s) # 将不同状态放入网络计算 q_as 值
 
         # (batch, num_actions) -> (batch, )
         Q = torch.gather(q_as, dim=-1, index=a.unsqueeze(-1)).squeeze(-1)
 
         # update model
-        batch_loss = self.mse_loss(Q, y)
+        batch_loss = self.mse_loss(Q, y) # 整个 batch 的 loss 值
         batch_loss.backward()
         self.optimizer.step()
         batch_loss = batch_loss.item()
@@ -358,11 +358,17 @@ class EstimatorNetwork(nn.Module):
 
         # build the Q network
         layer_dims = [np.prod(self.state_shape)] + self.mlp_layers
-        fc = [nn.Flatten()]
-        fc.append(nn.BatchNorm1d(layer_dims[0]))
+        # fc = [nn.Flatten()]
+        # fc.append(nn.BatchNorm1d(layer_dims[0]))
+        # for i in range(len(layer_dims)-1):
+        #     fc.append(nn.Linear(layer_dims[i], layer_dims[i+1], bias=True))
+        #     fc.append(nn.Tanh())
+        # fc.append(nn.Linear(layer_dims[-1], self.num_actions, bias=True))
+        fc = []
         for i in range(len(layer_dims)-1):
             fc.append(nn.Linear(layer_dims[i], layer_dims[i+1], bias=True))
-            fc.append(nn.Tanh())
+            fc.append(nn.BatchNorm1d(layer_dims[i+1]))
+            fc.append(nn.ReLU())
         fc.append(nn.Linear(layer_dims[-1], self.num_actions, bias=True))
         self.fc_layers = nn.Sequential(*fc)
 

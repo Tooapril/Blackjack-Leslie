@@ -73,7 +73,7 @@ class BlackjackGame:
             self.history.append((d, p, w))
 
         next_state = {}
-        # Play hit
+        # Play hit ！！！
         if action != "stand":
             self.dealer.deal_card(self.players[self.game_pointer]) # 对应玩家获得发牌
             self.players[self.game_pointer].status, self.players[self.game_pointer].score = self.judger.judge_round(
@@ -118,7 +118,7 @@ class BlackjackGame:
         for i in range(self.num_players): # 存储各玩家手牌到 player0 hand ...
             next_state['player' + str(i) + ' hand'] = [card.get_index() for card in self.players[i].hand]
         next_state['dealer hand'] = dealer_hand # 存储庄家手牌到 dealer hand
-        next_state['actions'] = ('hit', 'stand') # 存储两个合法动作
+        next_state['actions'] = ('hit', 'stand') # 存储合法动作
         next_state['state'] = (hand, dealer_hand) # 存储玩家和庄家手牌到 state
 
         
@@ -150,7 +150,7 @@ class BlackjackGame:
         ''' Return the number of applicable actions
 
         Returns:
-            number_of_actions (int): there are only two actions (hit and stand)
+            number_of_actions (int): there are only two actions (hit, stand)
         '''
         return 2
 
@@ -178,7 +178,7 @@ class BlackjackGame:
                 To remove it, we need to change dqn agent too in my opinion
                 '''
         state = {}
-        state['actions'] = ('hit', 'stand') # 存储两个合法动作
+        state['actions'] = ('hit', 'stand') # 存储合法动作
         hand = [card.get_index() for card in self.players[player_id].hand] # 各玩家手牌
         if self.is_over(): # 庄家手牌（游戏未结束时只能看见庄家一张手牌）
             dealer_hand = [card.get_index() for card in self.dealer.hand]

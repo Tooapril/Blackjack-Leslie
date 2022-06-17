@@ -25,7 +25,7 @@ def train(args):
         from rlcard.agents import DQNAgent
         agent = DQNAgent(num_actions=env.num_actions,
                          state_shape=env.state_shape[0],
-                         mlp_layers=[64,64],
+                         mlp_layers=[128, 128],
                          device=device)
     elif args.algorithm == 'nfsp':
         from rlcard.agents import NFSPAgent
@@ -55,11 +55,11 @@ def train(args):
             # Feed transitions into agent memory, and train the agent
             # Here, we assume that DQN always plays the first position
             # and the other players play randomly (if any)
-            for ts in trajectories[0]:
+            for ts in trajectories[0]: # 将每一个 trajectory 装入 memory，等待一定时机进行批量训练
                 agent.feed(ts)
 
             # Evaluate the performance. Play with random agents.
-            if episode % args.evaluate_every == 0:
+            if episode % args.evaluate_every == 0: # episode 每运行 evaluate_every 次，则输出本次 episode 内的 timestep 和 reward，并存储到 log.txt 文件内
                 logger.log_performance(env.timestep, tournament(env, args.num_eval_games)[0])
 
         # Get the paths
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_episodes', type=int, default=5000)
     parser.add_argument('--num_eval_games', type=int, default=2000)
     parser.add_argument('--evaluate_every', type=int, default=100)
-    parser.add_argument('--log_dir', type=str, default='experiments/blackjack_dqn_result/')
+    parser.add_argument('--log_dir', type=str, default='experiments/blackjack/dqn/')
 
     args = parser.parse_args()
 
