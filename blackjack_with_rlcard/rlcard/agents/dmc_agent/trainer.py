@@ -112,12 +112,12 @@ class DMCTrainer:
             momentum (float): RMSProp momentum
             epsilon (float): RMSProp epsilon
         '''
-        self.env = env
+        self.env = env # 已创建好的 DouDiZhuEnv
 
         self.plogger = FileWriter(
             xpid=xpid,
             rootdir=savedir,
-        )
+        ) # 将 xpid 传入，并将其存入 savedir 下
 
         self.checkpointpath = os.path.expandvars(
             os.path.expanduser('%s/%s/%s' % (savedir, xpid, 'model.tar')))
@@ -125,22 +125,22 @@ class DMCTrainer:
         self.T = unroll_length
         self.B = batch_size
 
-        self.xpid = xpid
-        self.load_model = load_model
-        self.savedir = savedir
-        self.save_interval = save_interval
-        self.num_actor_devices = num_actor_devices
-        self.num_actors = num_actors
-        self.training_device = training_device
-        self.total_frames = total_frames
-        self.exp_epsilon = exp_epsilon
-        self.num_buffers = num_buffers
-        self.num_threads = num_threads
-        self.max_grad_norm = max_grad_norm
-        self.learning_rate =learning_rate
-        self.alpha = alpha
-        self.momentum = momentum
-        self.epsilon = epsilon
+        self.xpid = xpid # Experiment id
+        self.load_model = load_model # 是否加载已有模型
+        self.savedir = savedir # 存储实验数据的根目录
+        self.save_interval = save_interval # 间隔多少 minute 存储一下模型
+        self.num_actor_devices = num_actor_devices # 使用模拟器的设备数
+        self.num_actors = num_actors # 每个模拟器上的 actor 数
+        self.training_device = training_device # GPU 上训练模型的索引号
+        self.total_frames = total_frames # 全部环境训练帧数
+        self.exp_epsilon = exp_epsilon # 𝛆 探索的概率
+        self.num_buffers = num_buffers # 学习者的批大小
+        self.num_threads = num_threads # 学习者的线程数
+        self.max_grad_norm = max_grad_norm # 最大正则梯度
+        self.learning_rate = learning_rate # 学习率
+        self.alpha = alpha # RMSProp 平滑连续率
+        self.momentum = momentum # RMSProp 动力值
+        self.epsilon = epsilon # RMSProp 𝛆
 
         self.action_shape = self.env.action_shape
         if self.action_shape[0] == None:  # One-hot encoding
@@ -155,10 +155,10 @@ class DMCTrainer:
             model = DMCModel(self.env.state_shape,
                              self.action_shape,
                              exp_epsilon=self.exp_epsilon,
-                             device=device)
-            model.share_memory()
-            model.eval()
-            models.append(model)
+                             device=device) # 创建三个 DMC Agent 合并为一个 DMC Model
+            model.share_memory() # 分别对三个 DMC Agent 的网络部分进行共享内存
+            model.eval() # 告诉网络，这个阶段是用来测试的，于是模型的参数在该阶段不进行更新
+            models.append(model) # 对每一个设备都初始化一个 DMC Model
 
         # Initialize buffers
         buffers = create_buffers(self.T,

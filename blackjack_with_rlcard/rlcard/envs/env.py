@@ -39,8 +39,8 @@ class Env(object):
             self.game.configure(_game_config) # 初始化游戏玩家数 1 人
 
         # Get the number of players/actions in this game
-        self.num_players = self.game.get_num_players() # 默认玩家数为 1 人
-        self.num_actions = self.game.get_num_actions() # 默认动作数为 2 个
+        self.num_players = self.game.get_num_players() # 玩家数
+        self.num_actions = self.game.get_num_actions() # 动作数
 
         # A counter for the timesteps
         self.timestep = 0

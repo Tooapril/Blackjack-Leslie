@@ -24,13 +24,13 @@ class DMCNet(nn.Module):
                  action_shape,
                  mlp_layers=[512,512,512,512,512]):
         super().__init__()
-        input_dim = np.prod(state_shape) + np.prod(action_shape)
+        input_dim = np.prod(state_shape) + np.prod(action_shape) # 将不同 Agent 状态空间与动作空间大小相加
         layer_dims = [input_dim] + mlp_layers
         fc = []
         for i in range(len(layer_dims)-1):
             fc.append(nn.Linear(layer_dims[i], layer_dims[i+1]))
             fc.append(nn.ReLU())
-        fc.append(nn.Linear(layer_dims[-1], 1))
+        fc.append(nn.Linear(layer_dims[-1], 1)) # 网络层最后输出为 1
         self.fc_layers = nn.Sequential(*fc)
 
     def forward(self, obs, actions):
