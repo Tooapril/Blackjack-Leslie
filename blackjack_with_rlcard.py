@@ -27,24 +27,24 @@ def train(args):
                          state_shape=env.state_shape[0],
                          mlp_layers=[64, 64],
                          device=device)
-    elif args.algorithm == 'nfsp':
-        from rlcard.agents import NFSPAgent
-        agent = NFSPAgent(num_actions=env.num_actions,
-                          state_shape=env.state_shape[0],
-                          hidden_layers_sizes=[64,64],
-                          q_mlp_layers=[64,64],
-                          device=device)
+    elif args.algorithm == 'cfr': # ❗️
+        from rlcard.agents import CFRAgent
+        agent = CFRAgent(env, os.path.join(args.log_dir, 'cfr_model'))
+
     agents = [agent]
     for _ in range(env.num_players):
-        agents.append(RandomAgent(num_actions=env.num_actions))
+        agents.append(DQNAgent(num_actions=env.num_actions,
+                               state_shape=env.state_shape[0],
+                               mlp_layers=[64, 64],
+                               device=device))
     env.set_agents(agents) # 将对应 agent 初始化到环境中
 
     # Start training
     with Logger(args.log_dir) as logger:
         for episode in range(args.num_episodes):
 
-            if args.algorithm == 'nfsp':
-                agents[0].sample_episode_policy()
+            # if args.algorithm == 'nfsp':
+            #     agents[0].sample_episode_policy()
 
             # Generate data from the environment （玩完一局游戏后，将所有玩家最新状态和游戏结果存储起来）
             trajectories, payoffs = env.run(is_training=True)
@@ -74,11 +74,10 @@ def train(args):
     print('Model saved in', save_path)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser("DQN/NFSP example in RLCard")
-    parser.add_argument('--env', type=str, default='blackjack',
-            choices=['blackjack', 'leduc-holdem', 'limit-holdem', 'doudizhu', 'mahjong', 'no-limit-holdem', 'uno', 'gin-rummy'])
-    parser.add_argument('--algorithm', type=str, default='dqn', choices=['dqn', 'nfsp'])
-    parser.add_argument('--cuda', type=str, default='')
+    parser = argparse.ArgumentParser("DQN/CFR example in RLCard")
+    parser.add_argument('--env', type=str, default='blackjack')
+    parser.add_argument('--algorithm', type=str, default='dqn', choices=['dqn', 'cfr'])
+    parser.add_argument('--cuda', type=str, default='0')
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--num_episodes', type=int, default=5000)
     parser.add_argument('--num_eval_games', type=int, default=2000)
