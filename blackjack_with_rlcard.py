@@ -46,6 +46,9 @@ def train(args):
         # Evaluate CFR against random
         eval_env.set_agents([agent, RandomAgent(num_actions=env.num_actions)])
 
+    elif args.algorithm == "ppo":
+        pass
+    
     # Start training
     with Logger(args.log_dir) as logger:
         for episode in range(args.num_episodes):
