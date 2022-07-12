@@ -155,8 +155,8 @@ class DMCTrainer:
             model = DMCModel(self.env.state_shape,
                              self.action_shape,
                              exp_epsilon=self.exp_epsilon,
-                             device=device) # 创建三个 DMC Agent 合并为一个 DMC Model
-            model.share_memory() # 分别对三个 DMC Agent 的网络部分进行共享内存
+                             device=device) # 创建 num_players 个 DMC Agent 合并为一个 DMC Model
+            model.share_memory() # 分别对 num_players 个 DMC Agent 的网络部分进行共享内存
             model.eval() # 告诉网络，这个阶段是用来测试的，于是模型的参数在该阶段不进行更新
             models.append(model) # 对每一个设备都初始化一个 DMC Model
 
