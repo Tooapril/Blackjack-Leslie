@@ -91,7 +91,7 @@ class FileWriter:
 
         rootdir = os.path.expandvars(os.path.expanduser(rootdir))
         # to file handler
-        self.basepath = os.path.join(rootdir, self.xpid)
+        self.basepath = os.path.join(rootdir)
 
         if not os.path.exists(self.basepath): # 如果没有找到日志目录。则创建一个日志目录，并输出日志
             self._logger.info('Creating log directory: %s', self.basepath)

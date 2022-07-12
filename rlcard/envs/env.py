@@ -30,13 +30,13 @@ class Env(object):
         # Game specific configurations
         # Currently only support blackjack、limit-holdem、no-limit-holdem
         # TODO support game configurations for all the games
-        supported_envs = ['blackjack', 'leduc-holdem', 'limit-holdem', 'no-limit-holdem']
-        if self.name in supported_envs:
+        supported_envs = ['blackjack', 'doudizhu', 'uno']
+        if self.name in supported_envs: # 将 config 的配置替换 default_game_config
             _game_config = self.default_game_config.copy()
             for key in config:
                 if key in _game_config:
                     _game_config[key] = config[key]
-            self.game.configure(_game_config) # 初始化游戏玩家数 1 人
+            self.game.configure(_game_config) # 初始化游戏玩家数
 
         # Get the number of players/actions in this game
         self.num_players = self.game.get_num_players() # 玩家数

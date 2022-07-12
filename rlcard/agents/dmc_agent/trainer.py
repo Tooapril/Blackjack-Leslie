@@ -67,7 +67,7 @@ def learn(position,
         return stats
 
 
-class DMCTrainer:    
+class DMCTrainer:
     def __init__(self,
                  env,
                  load_model=False,
@@ -112,7 +112,7 @@ class DMCTrainer:
             momentum (float): RMSProp momentum
             epsilon (float): RMSProp epsilon
         '''
-        self.env = env # 已创建好的 DouDiZhuEnv
+        self.env = env # 已创建好的 Env
 
         self.plogger = FileWriter(
             xpid=xpid,
@@ -120,7 +120,7 @@ class DMCTrainer:
         ) # 将 xpid 传入，并将其存入 savedir 下
 
         self.checkpointpath = os.path.expandvars(
-            os.path.expanduser('%s/%s/%s' % (savedir, xpid, 'model.tar')))
+            os.path.expanduser('%s/%s' % (savedir, 'model.tar')))
 
         self.T = unroll_length
         self.B = batch_size
@@ -297,4 +297,4 @@ class DMCTrainer:
             log.info('Learning finished after %d frames.', frames)
 
         checkpoint(frames)
-        plogger.close()
+        self.plogger.close()
