@@ -92,7 +92,7 @@ def train(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("DQN/CFR example in RLCard")
     parser.add_argument('--env', type=str, default='blackjack')
-    parser.add_argument('--algorithm', type=str, default='dqn', choices=['dqn', 'cfr'])
+    parser.add_argument('--algorithm', type=str, default='cfr', choices=['dqn', 'cfr'])
     parser.add_argument('--cuda', type=str, default='0')
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--num_episodes', type=int, default=5000)
